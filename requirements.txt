@@ -1,0 +1,21 @@
+# --- Web API ---
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+python-multipart>=0.0.9
+
+# --- Retrieval ---
+numpy>=1.26
+scikit-learn>=1.4
+
+# --- Document loaders ---
+pypdf>=4.0
+python-docx>=1.1
+
+# --- LLM providers (only the one you configure is used) ---
+anthropic>=0.40
+openai>=1.40
+
+# --- Optional: semantic embeddings (downloads a model on first run) ---
+# Without this the app uses a TF-IDF embedder, which works fully offline.
+# sentence-transformers>=3.0

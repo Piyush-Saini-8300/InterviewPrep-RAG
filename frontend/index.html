@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interview Prep RAG</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1c2330; --muted: #667085; --border: #e3e6ec;
+    --accent: #4f46e5; --accent-soft: #eef0ff; --good: #12805c; --warn: #b54708; --bad: #c0362c;
+    --code: #f1f3f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f131a; --card: #171c26; --text: #e8ecf3; --muted: #93a0b4; --border: #263043;
+      --accent: #8b87ff; --accent-soft: #212745; --good: #4cc9a0; --warn: #f0a85b; --bad: #ff7b72;
+      --code: #0f131a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 18px 24px; border-bottom: 1px solid var(--border); background: var(--card); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; }
+  .pill { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .spacer { flex: 1; }
+  main { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+  nav { display: flex; gap: 6px; margin-bottom: 16px; }
+  nav button { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 8px 16px; border-radius: 8px; cursor: pointer; font: inherit; }
+  nav button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 14px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 4px; }
+  select, input[type=text], input[type=number], textarea, input[type=file] {
+    font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; width: 100%;
+  }
+  textarea { min-height: 130px; resize: vertical; }
+  .field { flex: 1; min-width: 150px; }
+  button.primary { background: var(--accent); color: #fff; border: 0; padding: 10px 18px; border-radius: 8px; cursor: pointer; font: inherit; font-weight: 600; }
+  button.primary:disabled { opacity: .5; cursor: not-allowed; }
+  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--border); padding: 9px 14px; border-radius: 8px; cursor: pointer; font: inherit; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .answer { white-space: pre-wrap; }
+  pre { background: var(--code); border: 1px solid var(--border); padding: 10px 12px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  pre code { background: none; padding: 0; }
+  .source { border-left: 3px solid var(--accent); padding: 6px 12px; margin: 8px 0; background: var(--accent-soft); border-radius: 0 8px 8px 0; }
+  .source b { font-size: 13px; }
+  .score { font-size: 34px; font-weight: 700; }
+  .score.good { color: var(--good); } .score.mid { color: var(--warn); } .score.bad { color: var(--bad); }
+  ul { margin: 6px 0 6px 18px; padding: 0; }
+  .progress { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 8px 0 14px; }
+  .progress > div { height: 100%; background: var(--accent); transition: width .3s; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .hidden { display: none; }
+  .error { color: var(--bad); }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 Interview Prep · RAG</h1>
+  <span class="pill" id="pill-llm">…</span>
+  <span class="pill" id="pill-emb">…</span>
+  <span class="spacer"></span>
+  <span class="muted" id="stats"></span>
+</header>
+
+<main>
+  <nav>
+    <button class="active" data-tab="ask">Ask your notes</button>
+    <button data-tab="interview">Mock interview</button>
+    <button data-tab="kb">Knowledge base</button>
+  </nav>
+
+  <!-- ASK -->
+  <section id="tab-ask">
+    <div class="card">
+      <div class="row">
+        <div class="field" style="flex:3"><label>Question</label>
+          <input type="text" id="ask-q" placeholder="e.g. How does hybrid search work in RAG?"></div>
+        <div class="field"><label>Topic</label><select class="topic-select" id="ask-topic"></select></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="primary" id="ask-btn">Ask</button>
+        <span class="muted" id="ask-status"></span>
+      </div>
+    </div>
+    <div id="ask-result"></div>
+  </section>
+
+  <!-- INTERVIEW -->
+  <section id="tab-interview" class="hidden">
+    <div class="card" id="iv-setup">
+      <div class="row">
+        <div class="field"><label>Topic</label><select class="topic-select" id="iv-topic"></select></div>
+        <div class="field"><label>Difficulty</label>
+          <select id="iv-diff"><option>mixed</option><option>easy</option><option>medium</option><option>hard</option></select></div>
+        <div class="field"><label>Questions</label><input type="number" id="iv-n" min="1" max="20" value="5"></div>
+      </div>
+      <div class="row" style="margin-top:12px"><button class="primary" id="iv-start">Start interview</button>
+        <span class="error" id="iv-err"></span></div>
+    </div>
+
+    <div class="card hidden" id="iv-run">
+      <div class="muted" id="iv-meta"></div>
+      <div class="progress"><div id="iv-bar" style="width:0"></div></div>
+      <h3 id="iv-question" style="margin:0 0 12px"></h3>
+      <textarea id="iv-answer" placeholder="Type your answer as you would say it in an interview…"></textarea>
+      <div class="row" style="margin-top:12px">
+        <button class="primary" id="iv-submit">Submit answer</button>
+        <button class="ghost hidden" id="iv-next">Next question →</button>
+        <span class="muted" id="iv-status"></span>
+      </div>
+    </div>
+
+    <div class="card hidden" id="iv-feedback"></div>
+    <div class="card hidden" id="iv-summary"></div>
+  </section>
+
+  <!-- KB -->
+  <section id="tab-kb" class="hidden">
+    <div class="card">
+      <h3 style="margin-top:0">Topics in your knowledge base</h3>
+      <table id="kb-table"></table>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Add your own notes</h3>
+      <p class="muted">Upload .md, .txt, .pdf or .docx. Use <code>### Q: [medium] Your question?</code> headings to feed the mock interview question bank.</p>
+      <div class="row">
+        <div class="field" style="flex:2"><label>File</label><input type="file" id="up-file" accept=".md,.markdown,.txt,.pdf,.docx"></div>
+        <div class="field"><label>Topic (optional)</label><input type="text" id="up-topic" placeholder="e.g. kubernetes"></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="primary" id="up-btn">Upload &amp; re-index</button>
+        <button class="ghost" id="reindex-btn">Re-index only</button>
+        <span class="muted" id="up-status"></span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, opts);
+  let data = null;
+  try { data = await res.json(); } catch (_) {}
+  if (!res.ok) throw new Error((data && (data.detail || data.message)) || res.statusText);
+  return data;
+}
+const post = (path, body) => api(path, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+
+// Tiny, safe markdown: escape first, then handle fences, inline code and bold.
+function render(text) {
+  const parts = String(text).split(/```/);
+  return parts.map((p, i) => {
+    if (i % 2 === 1) return '<pre><code>' + esc(p.replace(/^[a-zA-Z]*\n/, '')) + '</code></pre>';
+    return esc(p).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  }).join('');
+}
+
+// ---- tabs
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
+  ['ask', 'interview', 'kb'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
+});
+
+// ---- bootstrap
+async function loadMeta() {
+  const [health, topics] = await Promise.all([api('/api/health'), api('/api/topics')]);
+  $('pill-llm').textContent = health.llm === 'none' ? 'LLM: offline mode' : 'LLM: ' + health.llm;
+  $('pill-emb').textContent = 'Embeddings: ' + health.embedding;
+  $('stats').textContent = `${health.chunks} chunks · ${health.topics} topics`;
+  document.querySelectorAll('.topic-select').forEach(sel => {
+    const keep = sel.value;
+    sel.innerHTML = '<option value="all">All topics</option>' +
+      topics.topics.map(t => `<option value="${esc(t.topic)}">${esc(t.label)}</option>`).join('');
+    if (keep) sel.value = keep;
+  });
+  $('kb-table').innerHTML = '<tr><th>Topic</th><th>Chunks</th><th>Interview questions</th></tr>' +
+    topics.topics.map(t => `<tr><td>${esc(t.label)}</td><td>${t.chunks}</td><td>${t.questions}</td></tr>`).join('');
+}
+
+// ---- ask
+async function ask() {
+  const q = $('ask-q').value.trim();
+  if (q.length < 3) return;
+  $('ask-btn').disabled = true; $('ask-status').textContent = 'Searching…';
+  try {
+    const r = await post('/api/ask', { question: q, topic: $('ask-topic').value === 'all' ? null : $('ask-topic').value });
+    $('ask-result').innerHTML =
+      `<div class="card"><div class="answer">${render(r.answer)}</div>` +
+      (r.note ? `<p class="muted">${esc(r.note)}</p>` : '') + `</div>` +
+      (r.sources.length ? `<div class="card"><b>Sources</b>` + r.sources.map((s, i) =>
+        `<div class="source"><b>[${i + 1}] ${esc(s.source)} — ${esc(s.heading)}</b>
+         <div class="muted">${esc(s.snippet)}</div></div>`).join('') + `</div>` : '');
+    $('ask-status').textContent = '';
+  } catch (e) { $('ask-result').innerHTML = `<div class="card error">${esc(e.message)}</div>`; $('ask-status').textContent = ''; }
+  $('ask-btn').disabled = false;
+}
+$('ask-btn').onclick = ask;
+$('ask-q').addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+
+// ---- interview
+let session = null, current = null;
+
+function showQuestion(q) {
+  current = q;
+  $('iv-meta').textContent = `Question ${q.index} of ${q.total} · ${q.difficulty}`;
+  $('iv-bar').style.width = ((q.index - 1) / q.total * 100) + '%';
+  $('iv-question').textContent = q.question;
+  $('iv-answer').value = ''; $('iv-answer').disabled = false;
+  $('iv-submit').classList.remove('hidden'); $('iv-next').classList.add('hidden');
+  $('iv-feedback').classList.add('hidden');
+}
+
+$('iv-start').onclick = async () => {
+  $('iv-err').textContent = '';
+  try {
+    const t = $('iv-topic').value;
+    const r = await post('/api/interview/start', { topic: t === 'all' ? null : t, difficulty: $('iv-diff').value, num_questions: +$('iv-n').value });
+    session = r.session_id;
+    $('iv-setup').classList.add('hidden'); $('iv-summary').classList.add('hidden');
+    $('iv-run').classList.remove('hidden');
+    showQuestion(r.question);
+  } catch (e) { $('iv-err').textContent = e.message; }
+};
+
+let pendingNext = null, pendingSummary = null;
+
+$('iv-submit').onclick = async () => {
+  const answer = $('iv-answer').value.trim();
+  if (!answer) return;
+  $('iv-submit').disabled = true; $('iv-status').textContent = 'Grading…';
+  try {
+    const r = await post('/api/interview/answer', { session_id: session, answer });
+    const f = r.feedback;
+    const cls = f.score >= 7 ? 'good' : f.score >= 4 ? 'mid' : 'bad';
+    $('iv-feedback').innerHTML =
+      `<div class="row"><div class="score ${cls}">${f.score}/10</div><div><b>${esc(f.verdict)}</b>
+        <div class="muted">graded by ${f.method === 'llm' ? 'LLM' : 'keyword + semantic heuristic'}</div></div></div>` +
+      (f.strengths.length ? `<b>What worked</b><ul>${f.strengths.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : '') +
+      (f.improvements.length ? `<b>To improve</b><ul>${f.improvements.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : '') +
+      `<details><summary>Show model answer</summary><div class="answer" style="margin-top:8px">${render(f.model_answer)}</div></details>`;
+    $('iv-feedback').classList.remove('hidden');
+    $('iv-answer').disabled = true; $('iv-submit').classList.add('hidden');
+    pendingNext = r.next_question; pendingSummary = r.summary;
+    $('iv-next').textContent = r.finished ? 'See results →' : 'Next question →';
+    $('iv-next').classList.remove('hidden');
+    $('iv-bar').style.width = (current.index / current.total * 100) + '%';
+  } catch (e) { $('iv-status').textContent = e.message; }
+  $('iv-submit').disabled = false; if (!$('iv-status').textContent.startsWith('Grad')) {} else $('iv-status').textContent = '';
+};
+
+$('iv-next').onclick = () => {
+  if (pendingNext) { showQuestion(pendingNext); return; }
+  const s = pendingSummary;
+  $('iv-run').classList.add('hidden'); $('iv-feedback').classList.add('hidden');
+  $('iv-summary').innerHTML =
+    `<h3 style="margin-top:0">Interview complete — ${s.average_score}/10</h3><p><b>${esc(s.readiness)}</b> · ${esc(s.topic)}</p>` +
+    (s.coach ? `<p>${esc(s.coach)}</p>` : '') +
+    `<table><tr><th>Question</th><th>Score</th></tr>${s.questions.map(q => `<tr><td>${esc(q.question)}</td><td>${q.score}</td></tr>`).join('')}</table>` +
+    (s.top_gaps.length ? `<p><b>Concepts to revise:</b> ${s.top_gaps.map(esc).join(', ')}</p>` : '') +
+    `<button class="primary" id="iv-again">Practice again</button>`;
+  $('iv-summary').classList.remove('hidden');
+  $('iv-again').onclick = () => { $('iv-summary').classList.add('hidden'); $('iv-setup').classList.remove('hidden'); };
+};
+
+// ---- knowledge base
+$('up-btn').onclick = async () => {
+  const f = $('up-file').files[0];
+  if (!f) { $('up-status').textContent = 'Choose a file first.'; return; }
+  const fd = new FormData(); fd.append('file', f); fd.append('topic', $('up-topic').value);
+  $('up-status').textContent = 'Uploading & indexing…';
+  try { const r = await api('/api/upload', { method: 'POST', body: fd });
+        $('up-status').textContent = `Indexed ${r.chunks} chunks in ${r.seconds}s.`; await loadMeta(); }
+  catch (e) { $('up-status').textContent = e.message; }
+};
+$('reindex-btn').onclick = async () => {
+  $('up-status').textContent = 'Re-indexing…';
+  try { const r = await api('/api/ingest', { method: 'POST' }); $('up-status').textContent = `Indexed ${r.chunks} chunks in ${r.seconds}s.`; await loadMeta(); }
+  catch (e) { $('up-status').textContent = e.message; }
+};
+
+loadMeta().catch(e => { $('stats').textContent = 'Could not reach the API: ' + e.message; });
+</script>
+</body>
+</html>
